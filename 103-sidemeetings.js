@@ -72,12 +72,6 @@ const ical = require('ical-generator');
       }
     });
 
-/*
-    ics.createEvents(events, (err, value) => {
-      if (err) { throw err; }
-      console.log(value);
-    });
-*/
     const cal = createCalendar(events);
     console.log(cal.toString());
 
