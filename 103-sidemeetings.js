@@ -38,13 +38,11 @@ const day = {
   'FRIDAY':    [2018, 11, 9],
 };
 
+const timezone = "+0700"
+
 const fetch = require('node-fetch');
 const HTMLParser = require('node-html-parser');
-const ics = require('ics');
-
-Object.defineProperty(Array.prototype, "last", {
-  get: function() { return this.slice(-1)[0] }
-});
+const ical = require('ical-generator');
 
 (async function main() {
   try {
@@ -74,15 +72,23 @@ Object.defineProperty(Array.prototype, "last", {
       }
     });
 
+/*
     ics.createEvents(events, (err, value) => {
       if (err) { throw err; }
       console.log(value);
     });
+*/
+    const cal = createCalendar(events);
+    console.log(cal.toString());
 
   } catch(e) {
     console.log("Exception: " + e);
   }
 })();
+
+Object.defineProperty(Array.prototype, "last", {
+  get: function() { return this.slice(-1)[0] }
+});
 
 function processTable (room, weekday, table) {
   let events = [];
@@ -126,13 +132,37 @@ function processTable (room, weekday, table) {
     }
   });
 
-  // Add a duration to any event without an end time (in case something
-  // happens to the final entry of a table)
-  events.forEach(e => {
-    if(!e.hasOwnProperty('end')) {
-      e.duration = { hours: 1 };
-    }
+  return events;
+}
+
+
+// Convert from format used by 'ics' module to 'ical-generator' module
+function createCalendar(events){
+
+  function isoDateReducer (acc, cur, idx) {
+    const delim = ['','-','-','T',':',':','.'];
+    const width = [4,2,2,2,2,2,2];
+    return acc + delim[idx] + cur.toString().padStart(width[idx],'0');
+  }
+
+  const cal = ical({
+    domain: 'ietf.org',
   });
 
-  return events;
+  events.forEach(e => {
+    let start = new Date(e.start.reduce(isoDateReducer) + timezone);
+    let end = e.end ? new Date(e.end.reduce(isoDateReducer) + timezone)
+                    : new Date(start + 60 * 60 * 1000);
+
+    cal.createEvent({
+      summary: e.title,
+      description: e.description,
+      location: e.location,
+      timestamp: new Date(),
+      start: start,
+      end: end,
+    });
+  });
+
+  return cal;
 }
